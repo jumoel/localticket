@@ -1,12 +1,12 @@
 # lt
 
-A local issue tracker for LLM coding sessions. Like GitHub issues, but stored in a single SQLite file under your home directory and addressable from a single binary.
+A local issue tracker for LLM coding sessions. Tickets live in a SQLite file under your home directory and are managed by a single `lt` binary.
 
 ## Why this exists
 
-When a model is working through a task and notices something else that ought to happen later, the natural reflex is to drop the note in chat. Chat is a terrible place for it. The note disappears with the session, gets buried under the next prompt, or ends up as a TODO comment that nobody finds again.
+When a model notices something to do later, it usually drops a note in chat. That note disappears with the session or becomes a TODO comment nobody finds.
 
-`lt` gives the model a project-scoped, queryable, structured place to put those notes. Tickets survive the session. Multiple sessions on the same project see each other's work. Multiple projects stay isolated.
+`lt` gives the model a project-scoped store for those notes. Tickets persist across sessions, and projects stay isolated.
 
 ## Install
 
@@ -14,9 +14,7 @@ When a model is working through a task and notices something else that ought to 
 go install github.com/jumoel/localticket/cmd/lt@latest
 ```
 
-The binary lands at `$GOBIN/lt` (or `$HOME/go/bin/lt` if `GOBIN` is unset). Storage lives at `~/.localticket/db.sqlite` and is created on first use.
-
-The binary itself has one external dependency, `modernc.org/sqlite`, which is pure Go - no CGO, no system SQLite needed.
+Binary at `$GOBIN/lt` (default `$HOME/go/bin/lt`). Storage at `~/.localticket/db.sqlite`, created on first use. SQLite is `modernc.org/sqlite` - pure Go, no CGO.
 
 ## Quick start
 
@@ -28,19 +26,19 @@ lt show -p scratch 1
 lt close -p scratch 1
 ```
 
-Output is JSON when stdout isn't a TTY, a small table when it is. Force either with `--json` or `--pretty`.
+Each command prints JSON when piped and a table on a TTY. Override with `--json` or `--pretty`.
 
 ## Commands
 
 ```
 lt project create <name>
-lt project list
-lt project delete <name> [--force]
+lt project list                         (alias: ls)
+lt project delete <name> [--force]      (alias: rm)
 
-lt new    -p <project> <title>  [--body T|--body-file P|--body -] [--label L]... [--link TYPE:ID]...
-lt list   -p <project>          [--status open|in-progress|closed|all] [--label L]...
+lt new    -p <project> <title>...  [--body T|--body-file P|--body -] [--label L]... [--link TYPE:ID]...
+lt list   -p <project>             [--status open|in-progress|closed|all] [--label L]...
 lt show   -p <project> <id>
-lt edit   -p <project> <id>     [--title T] [--body T|--body-file P|--body -]
+lt edit   -p <project> <id>        [--title T] [--body T|--body-file P|--body -]
 lt status -p <project> <id> open|in-progress|closed
 lt close  -p <project> <id>
 lt reopen -p <project> <id>
@@ -51,17 +49,26 @@ lt search -p <project> <query>...
 
 lt summary [--swiftbar]
 lt watch   [-p <project>] [--since RFC3339] [--interval 2s]
+
+lt --help        Show usage
+lt --version     Show version
 ```
 
-`lt watch` streams an event line each time a ticket changes - status flips, label adds, body edits, link additions. Cross-project by default; pass `-p` to narrow. Output is JSONL when piped (one event per line) and a compact `time  project#id  action  details` table on a TTY. Run a watcher in one pane and let your model session work in another to see what it's doing as it does it.
+Project names and labels match `[a-z0-9_-]{1,64}`. Ticket IDs are sequential per project (`#1`, `#2`, …). Multi-word titles can be passed without quotes.
 
-Project names and labels match `[a-z0-9_-]{1,64}`. Ticket IDs are sequential per project (`#1`, `#2`, …).
+For the body, `lt new` checks `--body-file`, then `--body -` (stdin), then `--body TEXT`, then piped stdin. With no flag and a TTY, it opens `$VISUAL`/`$EDITOR`/`vi` on a temp file. An empty editor buffer aborts.
 
-Link types accepted on input: `blocks`, `blocked-by`, `parent`, `child`, `duplicate-of`, `related`. The schema stores only the canonical four (`blocks`, `parent`, `duplicate-of`, `related`); `blocked-by` and `child` are normalized by swapping the endpoints, so a ticket viewed from either side sees the relationship from its own perspective.
+`lt list` defaults to open and in-progress. Pass `--status closed` or `--status all` to include closed.
+
+`lt search` is an FTS5 query against title and body. `OR`, `"phrases"`, `prefix*`, and `NEAR(a b, 5)` all work.
+
+`lt watch` polls the DB every `--interval` (default 2s, min 500ms) and emits an event for each change since the last tick. It watches all projects unless you pass `-p`. Output is JSONL when piped, otherwise a `time  project#id  action  details` table.
+
+Link types accepted on input: `blocks`, `blocked-by`, `parent`, `child`, `duplicate-of`, `related`. The schema stores only the canonical four (`blocks`, `parent`, `duplicate-of`, `related`). Inputs of `blocked-by` and `child` are flipped to their inverse, but each ticket sees the relationship from its own side, so one sees `blocks #7` and the other sees `blocked-by #3`.
 
 ## Output
 
-Pretty mode is for humans. JSON mode is for tools. The single-ticket JSON shape is:
+Single ticket:
 
 ```json
 {
@@ -78,39 +85,64 @@ Pretty mode is for humans. JSON mode is for tools. The single-ticket JSON shape 
 }
 ```
 
-`list` and `search` wrap it as `{"tickets": [...]}`. Errors come back as `{"error": "...", "code": "..."}` on stderr when the resolved output mode is JSON.
+`list` and `search` wrap an array of these objects as `{"tickets": [...]}`.
 
-Exit codes:
+`project list` returns `{"projects": [...]}` with `name`, `created_at`, and a `tickets` count map (`open`, `in_progress`, `closed`). `project create` returns `{"name": "...", "created_at": "..."}`. `project delete` returns `{"deleted": "<name>"}`.
 
+`summary`:
+
+```json
+{
+  "projects": [
+    {"name": "scratch", "open": 2, "in_progress": 0, "closed": 1, "last_updated": "2026-05-04T12:00:00Z"}
+  ],
+  "top": [
+    {
+      "project": "scratch", "id": 3, "title": "...", "body": "...", "status": "open",
+      "labels": ["refactor"],
+      "links": [{"type": "blocks", "target": 7}],
+      "updated_at": "2026-05-04T12:00:00Z"
+    }
+  ],
+  "totals": {"open": 2, "in_progress": 0, "closed": 1, "projects": 1}
+}
 ```
-0  success
-1  user error (bad args, validation)
-2  not found
-3  conflict (e.g. duplicate label, link already exists)
-4  internal (DB failure, etc.)
+
+`top` lists up to 5 of the most recently touched non-closed tickets across all projects.
+
+`watch` line:
+
+```json
+{"observed_at": "2026-05-04T12:00:00Z", "project": "scratch", "id": 3, "action": "label_added", "label": "refactor"}
 ```
+
+`action` values: `created`, `updated`, `closed`, `reopened`, `status_changed`, `title_changed`, `body_changed`, `label_added`, `label_removed`, `link_added`, `link_removed`. Status and title changes carry `from` and `to`. Body changes carry `body`. Label and link events carry `label`, `link_type`, and `link_target`. Fields irrelevant to the action are omitted.
+
+Errors come back on stderr as `{"error": "...", "code": "..."}` when the output mode is JSON.
+
+Exit codes: `0` ok, `1` user error, `2` not found, `3` conflict, `4` internal.
 
 ## CLAUDE.md snippet
 
-Drop this into your `~/.claude/CLAUDE.md` (or a project-level CLAUDE.md) so the model knows the tool is on the machine and when to use it:
+Drop into `~/.claude/CLAUDE.md` (or a project CLAUDE.md):
 
 ```md
 ## lt - local issue tracker
 
-This machine has `lt`, a project-scoped local issue tracker (`lt --help` for the full command list). Use it when:
+This machine has `lt`, a project-scoped local issue tracker (`lt --help` for the full list). Use it when:
 
 - You finish a task and notice unrelated work that should happen later. Don't drop it in chat. File it: `lt new -p <project> "<title>" --body "<context>"`.
-- The user changes direction mid-task and you have abandoned work worth keeping. File it as a closed ticket so it's recoverable: `lt new -p <project> "<title>" --body "<what you did>"` followed by `lt close -p <project> <id>`.
-- You need to look up earlier follow-up notes for the same project. Run `lt -p <project> list` or `lt -p <project> search <query>`.
-- You're doing something that depends on or blocks an existing ticket. Link it: `lt new ... --link blocks:3` or `lt link add -p <project> <id> blocks <other>`.
+- The user changes direction mid-task and you have abandoned work worth keeping. File and close it: `lt new -p <project> "<title>" --body "<what you did>"` then `lt close -p <project> <id>`.
+- You need earlier follow-up notes. Run `lt -p <project> list` or `lt -p <project> search <query>`.
+- A task depends on or blocks an existing ticket. Link it: `lt new ... --link blocks:3` or `lt link add -p <project> <id> blocks <other>`.
 
-Always pass `--project/-p`. Pick a project name that matches the work surface, not the session - for a feature in repo `acme-api`, use `--project acme-api`, never `--project session-2026-05-04`. Project names match `[a-z0-9_-]`.
+Pick a project name that matches the work surface, not the session - for a feature in `acme-api`, use `--project acme-api`, never `--project session-2026-05-04`. Project names match `[a-z0-9_-]`. Every ticket command needs `-p`. `summary` doesn't accept it; `watch` makes it optional.
 
-Output is JSON when stdout isn't a TTY, so piping through `jq` works without extra flags. Pass `--json` to force it. The `id` field in JSON is the per-project ticket number you reference in subsequent commands.
+Output is JSON when stdout isn't a TTY, so `jq` works directly. The `id` field is the per-project number to reference in later commands.
 
-Exit codes: 0 ok, 1 user error, 2 not found, 3 conflict, 4 internal. Branch on these instead of parsing error prose.
+Exit codes: 0 ok, 1 user error, 2 not found, 3 conflict, 4 internal. Branch on these, don't parse error prose.
 
-If a project doesn't exist yet (any command will return exit code 2 with `code: "not_found"` and a message naming the project), create it explicitly first: `lt project create <name>`. Auto-create is intentionally off so a typo doesn't spawn a project.
+If a project doesn't exist, any command returns exit code 2 with `code: "not_found"`. Create it explicitly: `lt project create <name>`. Auto-create is off so a typo doesn't spawn a project.
 ```
 
 ## Menu bar (SwiftBar)
@@ -122,15 +154,15 @@ brew install --cask swiftbar
 ln -s "$PWD/swiftbar/localticket.5m.sh" "$HOME/Library/Application Support/SwiftBar/Plugins/"
 ```
 
-The `.5m.` in the filename is the refresh interval - rename to `.10m.` or `.1h.` to change it. The plugin is read-only: clicking a ticket does nothing in v1, since SwiftBar can't drop you back into the model session that filed it.
+Run from the repo root, or substitute an absolute path. The `.5m.` is the refresh interval - rename to `.10m.` or `.1h.` to change it. The plugin is read-only; clicking a ticket does nothing, since SwiftBar can't return you to the model session that filed it.
 
-The plugin is just a shim around `lt summary --swiftbar`. Run that command directly to see what SwiftBar will render.
+The plugin is a shim around `lt summary --swiftbar`. Run that to see what SwiftBar will render.
 
 ## Storage and concurrency
 
-The DB file is opened with `journal_mode=WAL`, `busy_timeout=5000`, and `foreign_keys=ON`. Multiple `lt` processes against the same DB serialize on writes through SQLite's lock; reads are non-blocking under WAL. Two LLM sessions hammering the same project will not corrupt anything, though they may briefly wait on each other.
+The DB uses WAL mode, `busy_timeout=5000`, and foreign keys. Concurrent writers serialize on SQLite's lock, but readers never block. Two sessions writing to the same project won't corrupt anything, though one may wait up to 5 seconds for the other before giving up.
 
-To wipe the store completely, delete `~/.localticket/db.sqlite` (and the `-shm`/`-wal` siblings). To back it up, copy those three files together while no `lt` process is mid-write.
+To wipe everything, delete `~/.localticket/db.sqlite` and its `-shm`/`-wal` siblings. To back up, copy all three together when no `lt` process is mid-write.
 
 ## Development
 
@@ -140,4 +172,4 @@ make test
 make build    # produces ./lt
 ```
 
-Tests are hermetic - they run against a fresh temp `HOME` so your real `~/.localticket/` is untouched.
+Tests are hermetic - they run against a fresh temp `HOME`, so your real `~/.localticket/` is untouched.
