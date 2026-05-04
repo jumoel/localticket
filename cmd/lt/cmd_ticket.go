@@ -16,6 +16,10 @@ func runNewImpl(args []string, stdout io.Writer, mode outMode) error {
 	project := projectFlag(fs)
 	body := &bodyFlags{}
 	body.bind(fs)
+	var labels labelList
+	var links linkList
+	fs.Var(&labels, "label", "label to apply (repeatable)")
+	fs.Var(&links, "link", "link to add as TYPE:ID (repeatable; e.g. blocks:3)")
 	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
@@ -24,9 +28,24 @@ func runNewImpl(args []string, stdout io.Writer, mode outMode) error {
 		return err
 	}
 	if fs.NArg() < 1 {
-		return userErr("usage", "usage: lt new -p <project> <title>")
+		return userErr("usage", "usage: lt new -p <project> <title> [--label L]... [--link TYPE:ID]...")
 	}
 	title := strings.Join(fs.Args(), " ")
+
+	for _, l := range labels {
+		if err := validateLabel(l); err != nil {
+			return err
+		}
+	}
+	parsedLinks := make([]parsedLink, 0, len(links))
+	for _, raw := range links {
+		pl, err := parseLinkSpec(raw)
+		if err != nil {
+			return err
+		}
+		parsedLinks = append(parsedLinks, pl)
+	}
+
 	bodyText, aborted, err := body.resolve(os.Stdin, stdinIsTTY(), editorForNew, "")
 	if err != nil {
 		return err
@@ -43,7 +62,45 @@ func runNewImpl(args []string, stdout io.Writer, mode outMode) error {
 	if err != nil {
 		return err
 	}
+	if len(labels) > 0 {
+		if _, err := s.addLabels(*project, t.ID, labels); err != nil {
+			return err
+		}
+	}
+	for _, pl := range parsedLinks {
+		if err := s.addLink(*project, t.ID, pl.target, pl.typ); err != nil {
+			return err
+		}
+	}
+	if len(labels) > 0 || len(parsedLinks) > 0 {
+		t, err = s.getTicket(*project, t.ID)
+		if err != nil {
+			return err
+		}
+	}
 	return renderTicket(stdout, mode, t, "Created")
+}
+
+type linkList []string
+
+func (l *linkList) String() string     { return strings.Join(*l, ",") }
+func (l *linkList) Set(v string) error { *l = append(*l, v); return nil }
+
+type parsedLink struct {
+	typ    string
+	target int64
+}
+
+func parseLinkSpec(s string) (parsedLink, error) {
+	colon := strings.Index(s, ":")
+	if colon <= 0 || colon == len(s)-1 {
+		return parsedLink{}, userErr("bad_link", fmt.Sprintf("invalid --link %q (want TYPE:ID, e.g. blocks:3)", s))
+	}
+	id, err := parseTicketID(s[colon+1:])
+	if err != nil {
+		return parsedLink{}, err
+	}
+	return parsedLink{typ: s[:colon], target: id}, nil
 }
 
 func runShowImpl(args []string, stdout io.Writer, mode outMode) error {
