@@ -152,14 +152,14 @@ func TestSwiftbarSubmenu(t *testing.T) {
 
 	for _, want := range []string{
 		"demo#1  first | font=Menlo",
-		"--Status: open | color=gray",
-		"--Labels: bug, refactor | color=gray",
-		"--Links: blocked-by #2 | color=gray",
+		"--Status: open",
+		"--Labels: bug, refactor",
+		"--Links: blocked-by #2",
 		"-----",
 		"--line one | font=Menlo",
 		"--line two | font=Menlo",
 		"demo#2  blocker | font=Menlo",
-		"--Links: blocks #1 | color=gray",
+		"--Links: blocks #1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in output:\n%s", want, out)

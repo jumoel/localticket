@@ -128,18 +128,18 @@ const swiftbarBodyLineLimit = 25
 // swiftbarBodyLineLimit are dropped with a trailing "(... N more lines)".
 func renderSwiftbarTicket(w io.Writer, t topTicket) {
 	fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, swiftbarSafe(truncateRunes(t.Title, 60)))
-	fmt.Fprintf(w, "--Status: %s | color=gray\n", t.Status)
+	fmt.Fprintf(w, "--Status: %s\n", t.Status)
 	if len(t.Labels) > 0 {
-		fmt.Fprintf(w, "--Labels: %s | color=gray\n", swiftbarSafe(strings.Join(t.Labels, ", ")))
+		fmt.Fprintf(w, "--Labels: %s\n", swiftbarSafe(strings.Join(t.Labels, ", ")))
 	}
 	if len(t.Links) > 0 {
 		parts := make([]string, len(t.Links))
 		for i, l := range t.Links {
 			parts[i] = fmt.Sprintf("%s #%d", l.Type, l.Target)
 		}
-		fmt.Fprintf(w, "--Links: %s | color=gray\n", swiftbarSafe(strings.Join(parts, ", ")))
+		fmt.Fprintf(w, "--Links: %s\n", swiftbarSafe(strings.Join(parts, ", ")))
 	}
-	fmt.Fprintf(w, "--Updated: %s | color=gray\n", t.UpdatedAt)
+	fmt.Fprintf(w, "--Updated: %s\n", t.UpdatedAt)
 	body := strings.TrimRight(t.Body, "\n")
 	if body == "" {
 		return
