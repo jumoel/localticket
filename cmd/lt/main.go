@@ -31,6 +31,8 @@ Commands:
   link   rm     -p <project> <id> <other-id>
   search -p <project> <query>
 
+  summary [--swiftbar]
+
 Global flags:
   --json     Force JSON output
   --pretty   Force human-readable output
@@ -129,6 +131,8 @@ func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout,
 		return runLinkImpl(args, stdout, mode)
 	case "search":
 		return runSearchImpl(args, stdout, mode)
+	case "summary":
+		return runSummaryImpl(args, stdout, mode)
 	default:
 		return userErr("unknown_command", fmt.Sprintf("unknown command: %q (try `lt --help`)", cmd))
 	}

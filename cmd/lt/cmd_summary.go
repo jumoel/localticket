@@ -1,0 +1,113 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"text/tabwriter"
+)
+
+const swiftbarSFSymbol = "list.bullet.clipboard"
+const swiftbarProjectCap = 10
+
+func runSummaryImpl(args []string, stdout io.Writer, mode outMode) error {
+	fs := flag.NewFlagSet("summary", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	swiftbar := fs.Bool("swiftbar", false, "emit SwiftBar plugin format")
+	if err := parseArgs(fs, args); err != nil {
+		return userErr("bad_flags", err.Error())
+	}
+	if fs.NArg() != 0 {
+		return userErr("usage", "usage: lt summary [--swiftbar]")
+	}
+
+	s, err := openDefaultStore()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	sum, err := s.summarize()
+	if err != nil {
+		return err
+	}
+
+	if *swiftbar {
+		return renderSwiftbar(stdout, sum)
+	}
+	if mode == modeJSON {
+		return writeJSON(stdout, sum)
+	}
+	return renderSummaryPretty(stdout, sum)
+}
+
+func renderSummaryPretty(w io.Writer, sum *summary) error {
+	if sum.Totals.Projects == 0 {
+		fmt.Fprintln(w, "No projects.")
+		return nil
+	}
+	fmt.Fprintf(w, "%d open, %d in-progress, %d closed across %d project(s)\n\n",
+		sum.Totals.Open, sum.Totals.InProgress, sum.Totals.Closed, sum.Totals.Projects)
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "PROJECT\tOPEN\tIN-PROGRESS\tCLOSED\tLAST UPDATED")
+	for _, p := range sum.Projects {
+		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%s\n", p.Name, p.Open, p.InProgress, p.Closed, p.LastUpdated)
+	}
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+	if len(sum.Top) > 0 {
+		fmt.Fprintln(w, "\nRecent open work:")
+		for _, t := range sum.Top {
+			fmt.Fprintf(w, "  %s#%d  %s  %s\n", t.Project, t.ID, t.Status, truncateRunes(t.Title, 60))
+		}
+	}
+	return nil
+}
+
+func renderSwiftbar(w io.Writer, sum *summary) error {
+	totalActive := sum.Totals.Open + sum.Totals.InProgress
+	if totalActive == 0 {
+		fmt.Fprintf(w, " | sfimage=%s\n", swiftbarSFSymbol)
+	} else {
+		fmt.Fprintf(w, "%d | sfimage=%s\n", totalActive, swiftbarSFSymbol)
+	}
+	fmt.Fprintln(w, "---")
+
+	if sum.Totals.Projects == 0 {
+		fmt.Fprintln(w, "No projects | color=gray")
+		fmt.Fprintln(w, "---")
+		fmt.Fprintln(w, "Refresh | refresh=true")
+		return nil
+	}
+
+	shown := sum.Projects
+	hidden := 0
+	if len(shown) > swiftbarProjectCap {
+		hidden = len(shown) - swiftbarProjectCap
+		shown = shown[:swiftbarProjectCap]
+	}
+	for _, p := range shown {
+		active := p.Open + p.InProgress
+		if active == 0 {
+			fmt.Fprintf(w, "%s: idle | color=gray\n", p.Name)
+			continue
+		}
+		fmt.Fprintf(w, "%s: %d open, %d in-progress\n", p.Name, p.Open, p.InProgress)
+	}
+	if hidden > 0 {
+		fmt.Fprintf(w, "... and %d more | color=gray\n", hidden)
+	}
+
+	if len(sum.Top) > 0 {
+		fmt.Fprintln(w, "---")
+		fmt.Fprintln(w, "Recent | color=gray")
+		for _, t := range sum.Top {
+			fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, truncateRunes(t.Title, 60))
+		}
+	}
+
+	fmt.Fprintln(w, "---")
+	fmt.Fprintln(w, "Refresh | refresh=true")
+	return nil
+}

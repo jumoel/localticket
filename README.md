@@ -48,6 +48,8 @@ lt label  add|rm -p <project> <id> <label>...
 lt link   add    -p <project> <id> <type> <other-id>
 lt link   rm     -p <project> <id> <other-id>
 lt search -p <project> <query>...
+
+lt summary [--swiftbar]
 ```
 
 Project names and labels match `[a-z0-9_-]{1,64}`. Ticket IDs are sequential per project (`#1`, `#2`, …).
@@ -107,6 +109,19 @@ Exit codes: 0 ok, 1 user error, 2 not found, 3 conflict, 4 internal. Branch on t
 
 If a project doesn't exist yet (any command will return exit code 2 with `code: "not_found"` and a message naming the project), create it explicitly first: `lt project create <name>`. Auto-create is intentionally off so a typo doesn't spawn a project.
 ```
+
+## Menu bar (SwiftBar)
+
+`lt` ships a [SwiftBar](https://swiftbar.app) plugin that puts an open-ticket count in the macOS menu bar. The dropdown shows per-project counts (most recently updated first, capped at ten) and the five most recently touched non-closed tickets.
+
+```sh
+brew install --cask swiftbar
+ln -s "$PWD/swiftbar/localticket.5m.sh" "$HOME/Library/Application Support/SwiftBar/Plugins/"
+```
+
+The `.5m.` in the filename is the refresh interval - rename to `.10m.` or `.1h.` to change it. The plugin is read-only: clicking a ticket does nothing in v1, since SwiftBar can't drop you back into the model session that filed it.
+
+The plugin is just a shim around `lt summary --swiftbar`. Run that command directly to see what SwiftBar will render.
 
 ## Storage and concurrency
 
