@@ -123,23 +123,29 @@ func swiftbarSafe(s string) string {
 
 const swiftbarBodyLineLimit = 25
 
+// SwiftBar renders submenu items with a muted default text color, so we
+// explicitly set color/colorDark to system-label values to make body and
+// metadata read at full contrast in both light and dark mode.
+const swiftbarSubmenuColor = " color=black colorDark=white"
+const swiftbarSubmenuMonoStyle = " font=Menlo color=black colorDark=white"
+
 // renderSwiftbarTicket emits one Recent row plus a submenu (lines prefixed
 // with `--`) showing status, labels, links, and the body. Body lines beyond
 // swiftbarBodyLineLimit are dropped with a trailing "(... N more lines)".
 func renderSwiftbarTicket(w io.Writer, t topTicket) {
 	fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, swiftbarSafe(truncateRunes(t.Title, 60)))
-	fmt.Fprintf(w, "--Status: %s\n", t.Status)
+	fmt.Fprintf(w, "--Status: %s |%s\n", t.Status, swiftbarSubmenuColor)
 	if len(t.Labels) > 0 {
-		fmt.Fprintf(w, "--Labels: %s\n", swiftbarSafe(strings.Join(t.Labels, ", ")))
+		fmt.Fprintf(w, "--Labels: %s |%s\n", swiftbarSafe(strings.Join(t.Labels, ", ")), swiftbarSubmenuColor)
 	}
 	if len(t.Links) > 0 {
 		parts := make([]string, len(t.Links))
 		for i, l := range t.Links {
 			parts[i] = fmt.Sprintf("%s #%d", l.Type, l.Target)
 		}
-		fmt.Fprintf(w, "--Links: %s\n", swiftbarSafe(strings.Join(parts, ", ")))
+		fmt.Fprintf(w, "--Links: %s |%s\n", swiftbarSafe(strings.Join(parts, ", ")), swiftbarSubmenuColor)
 	}
-	fmt.Fprintf(w, "--Updated: %s\n", t.UpdatedAt)
+	fmt.Fprintf(w, "--Updated: %s |%s\n", t.UpdatedAt, swiftbarSubmenuColor)
 	body := strings.TrimRight(t.Body, "\n")
 	if body == "" {
 		return
@@ -153,7 +159,7 @@ func renderSwiftbarTicket(w io.Writer, t topTicket) {
 		shown = shown[:swiftbarBodyLineLimit]
 	}
 	for _, line := range shown {
-		fmt.Fprintf(w, "--%s | font=Menlo\n", swiftbarSafe(line))
+		fmt.Fprintf(w, "--%s |%s\n", swiftbarSafe(line), swiftbarSubmenuMonoStyle)
 	}
 	if hidden > 0 {
 		fmt.Fprintf(w, "--(... %d more lines) | color=gray\n", hidden)
