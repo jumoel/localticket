@@ -50,7 +50,10 @@ lt link   rm     -p <project> <id> <other-id>
 lt search -p <project> <query>...
 
 lt summary [--swiftbar]
+lt watch   [-p <project>] [--since RFC3339] [--interval 2s]
 ```
+
+`lt watch` streams an event line each time a ticket changes - status flips, label adds, body edits, link additions. Cross-project by default; pass `-p` to narrow. Output is JSONL when piped (one event per line) and a compact `time  project#id  action  details` table on a TTY. Run a watcher in one pane and let your model session work in another to see what it's doing as it does it.
 
 Project names and labels match `[a-z0-9_-]{1,64}`. Ticket IDs are sequential per project (`#1`, `#2`, …).
 

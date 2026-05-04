@@ -33,6 +33,8 @@ Commands:
 
   summary [--swiftbar]      (--swiftbar overrides --json/--pretty)
 
+  watch  [-p <project>] [--since RFC3339] [--interval 2s]
+
 Global flags:
   --json     Force JSON output
   --pretty   Force human-readable output
@@ -133,6 +135,8 @@ func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout 
 		return runSearchImpl(args, stdout, mode)
 	case "summary":
 		return runSummaryImpl(args, stdout, mode)
+	case "watch":
+		return runWatchImpl(args, stdout, mode)
 	default:
 		return userErr("unknown_command", fmt.Sprintf("unknown command: %q (try `lt --help`)", cmd))
 	}
