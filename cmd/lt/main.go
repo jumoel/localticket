@@ -31,7 +31,7 @@ Commands:
   link   rm     -p <project> <id> <other-id>
   search -p <project> <query>
 
-  summary [--swiftbar]
+  summary [--swiftbar]      (--swiftbar overrides --json/--pretty)
 
 Global flags:
   --json     Force JSON output
@@ -94,7 +94,7 @@ func run(args []string, stdin io.Reader, stdinTTY bool, stdout, stderr io.Writer
 	}
 
 	cmd, sub := rest[0], rest[1:]
-	err := dispatch(cmd, sub, stdin, stdinTTY, stdout, stderr, mode)
+	err := dispatch(cmd, sub, stdin, stdinTTY, stdout, mode)
 	if err == nil {
 		return 0
 	}
@@ -107,10 +107,10 @@ func run(args []string, stdin io.Reader, stdinTTY bool, stdout, stderr io.Writer
 	return 4
 }
 
-func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout, stderr io.Writer, mode outMode) error {
+func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer, mode outMode) error {
 	switch cmd {
 	case "project":
-		return runProjectImpl(args, stdout, stderr, mode)
+		return runProjectImpl(args, stdout, mode)
 	case "new":
 		return runNewImpl(args, stdin, stdinTTY, stdout, mode)
 	case "list":

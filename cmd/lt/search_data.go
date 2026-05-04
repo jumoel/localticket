@@ -7,7 +7,10 @@ import (
 	"modernc.org/sqlite"
 )
 
-const sqliteError = 1
+// SQLite primary error code. FTS5 query syntax errors and SQL parse errors
+// triggered by user-supplied MATCH text both surface here, so at this call
+// site code 1 is "the user's query is bad."
+const sqliteGenericError = 1
 
 func (s *store) searchTickets(projectName, query string) ([]*ticket, error) {
 	p, err := s.getProject(projectName)
@@ -62,7 +65,7 @@ func wrapFTSError(err error) error {
 		return nil
 	}
 	var sqliteErr *sqlite.Error
-	if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqliteError {
+	if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqliteGenericError {
 		return userErr("bad_query", err.Error())
 	}
 	return internalErr(err)

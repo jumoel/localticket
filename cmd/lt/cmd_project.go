@@ -7,7 +7,7 @@ import (
 	"text/tabwriter"
 )
 
-func runProjectImpl(args []string, stdout, stderr io.Writer, mode outMode) error {
+func runProjectImpl(args []string, stdout io.Writer, mode outMode) error {
 	if len(args) == 0 {
 		return userErr("missing_subcommand", "usage: lt project <create|list|delete> ...")
 	}
@@ -87,7 +87,7 @@ func projectList(args []string, stdout io.Writer, mode outMode) error {
 	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "NAME\tOPEN\tIN-PROGRESS\tCLOSED\tCREATED")
 	for _, p := range ps {
-		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%s\n", p.Name, p.Tickets["open"], p.Tickets["in-progress"], p.Tickets["closed"], p.CreatedAt)
+		fmt.Fprintf(tw, "%s\t%d\t%d\t%d\t%s\n", p.Name, p.Tickets["open"], p.Tickets["in_progress"], p.Tickets["closed"], p.CreatedAt)
 	}
 	return tw.Flush()
 }

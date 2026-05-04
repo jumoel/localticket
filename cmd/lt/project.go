@@ -71,7 +71,7 @@ func (s *store) listProjects() ([]projectSummary, error) {
 		if err := rows.Scan(&ps.Name, &ps.CreatedAt, &open, &inProg, &closed); err != nil {
 			return nil, internalErr(err)
 		}
-		ps.Tickets = map[string]int{"open": open, "in-progress": inProg, "closed": closed}
+		ps.Tickets = map[string]int{"open": open, "in_progress": inProg, "closed": closed}
 		out = append(out, ps)
 	}
 	return out, rows.Err()

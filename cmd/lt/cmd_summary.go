@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -103,11 +104,19 @@ func renderSwiftbar(w io.Writer, sum *summary) error {
 		fmt.Fprintln(w, "---")
 		fmt.Fprintln(w, "Recent | color=gray")
 		for _, t := range sum.Top {
-			fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, truncateRunes(t.Title, 60))
+			fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, swiftbarSafe(truncateRunes(t.Title, 60)))
 		}
 	}
 
 	fmt.Fprintln(w, "---")
 	fmt.Fprintln(w, "Refresh | refresh=true")
 	return nil
+}
+
+// swiftbarSafe scrubs characters that would break SwiftBar's line format.
+// '|' starts a parameter section, and CR/LF split one menu item into many.
+// SwiftBar has no escape syntax for these, so we replace them with neutrals.
+func swiftbarSafe(s string) string {
+	r := strings.NewReplacer("|", "¦", "\r", " ", "\n", " ")
+	return r.Replace(s)
 }
