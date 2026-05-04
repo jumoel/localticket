@@ -27,7 +27,7 @@ func runProjectImpl(args []string, stdout, stderr io.Writer, mode outMode) error
 func projectCreate(args []string, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("project create", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	if err := fs.Parse(args); err != nil {
+	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
 	if fs.NArg() != 1 {
@@ -59,7 +59,7 @@ func projectCreate(args []string, stdout io.Writer, mode outMode) error {
 func projectList(args []string, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("project list", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	if err := fs.Parse(args); err != nil {
+	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
 	if fs.NArg() != 0 {
@@ -96,7 +96,7 @@ func projectDelete(args []string, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("project delete", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	force := fs.Bool("force", false, "delete even if non-closed tickets exist")
-	if err := fs.Parse(args); err != nil {
+	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
 	if fs.NArg() != 1 {

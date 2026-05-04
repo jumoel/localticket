@@ -104,27 +104,27 @@ func run(args []string, stdout, stderr io.Writer) int {
 func dispatch(cmd string, args []string, stdout, stderr io.Writer, mode outMode) error {
 	switch cmd {
 	case "project":
-		return runProject(args, stdout, stderr, mode)
+		return runProjectImpl(args, stdout, stderr, mode)
 	case "new":
-		return runNew(args, stdout, mode)
+		return runNewImpl(args, stdout, mode)
 	case "list":
-		return runList(args, stdout, mode)
+		return runListImpl(args, stdout, mode)
 	case "show":
-		return runShow(args, stdout, mode)
+		return runShowImpl(args, stdout, mode)
 	case "edit":
-		return runEdit(args, stdout, mode)
+		return runEditImpl(args, stdout, mode)
 	case "status":
-		return runStatus(args, stdout, mode)
+		return runStatusImpl(args, stdout, mode)
 	case "close":
-		return runClose(args, stdout, mode)
+		return runCloseImpl(args, stdout, mode)
 	case "reopen":
-		return runReopen(args, stdout, mode)
+		return runReopenImpl(args, stdout, mode)
 	case "label":
-		return runLabel(args, stdout, mode)
+		return runLabelImpl(args, stdout, mode)
 	case "link":
-		return runLink(args, stdout, mode)
+		return runLinkImpl(args, stdout, mode)
 	case "search":
-		return runSearch(args, stdout, mode)
+		return runSearchImpl(args, stdout, mode)
 	default:
 		return userErr("unknown_command", fmt.Sprintf("unknown command: %q (try `lt --help`)", cmd))
 	}
