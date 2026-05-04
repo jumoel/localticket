@@ -239,6 +239,3 @@ func TestE2E_Search(t *testing.T) {
 		t.Errorf("missing query exit=%d, want 1", r.exit)
 	}
 }
-
-// silence unused-helper warnings if any test path skips bytes.Buffer use.
-var _ = bytes.NewBufferString
