@@ -12,7 +12,7 @@ elif [ -x "$HOME/go/bin/lt" ]; then
 elif [ -x "/usr/local/bin/lt" ]; then
   LT="/usr/local/bin/lt"
 else
-  echo " | sfimage=exclamationmark.triangle color=red"
+  echo " | sfimage=exclamationmark.triangle"
   echo "---"
   echo "lt binary not found"
   echo "Install: go install github.com/jumoel/localticket/cmd/lt@latest"
