@@ -131,6 +131,51 @@ func TestSwiftbarOutput_ProjectCap(t *testing.T) {
 	}
 }
 
+func TestSwiftbarSubmenu(t *testing.T) {
+	s := newTestStore(t)
+	mustExec(t, s, `INSERT INTO projects(name, created_at) VALUES ('demo', '2026-01-01T00:00:00Z')`)
+	mustExec(t, s, `INSERT INTO tickets(project_id, num, title, body, status, created_at, updated_at) VALUES
+		(1, 1, 'first',   'line one' || char(10) || 'line two', 'open',        '2026-01-01T00:00:00Z', '2026-02-01T00:00:00Z'),
+		(1, 2, 'blocker', '',                                   'in-progress', '2026-01-01T00:00:00Z', '2026-01-15T00:00:00Z')`)
+	mustExec(t, s, `INSERT INTO ticket_labels(ticket_id, label) VALUES (1, 'bug'), (1, 'refactor')`)
+	mustExec(t, s, `INSERT INTO ticket_links(from_id, to_id, type) VALUES (2, 1, 'blocks')`)
+
+	sum, err := s.summarize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := renderSwiftbar(&buf, sum); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	for _, want := range []string{
+		"demo#1  first | font=Menlo",
+		"--Status: open | color=gray",
+		"--Labels: bug, refactor | color=gray",
+		"--Links: blocked-by #2 | color=gray",
+		"-----",
+		"--line one | font=Menlo",
+		"--line two | font=Menlo",
+		"demo#2  blocker | font=Menlo",
+		"--Links: blocks #1 | color=gray",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in output:\n%s", want, out)
+		}
+	}
+	// Empty body should NOT emit the inner separator.
+	idx := strings.Index(out, "demo#2")
+	if idx < 0 {
+		t.Fatal("missing demo#2")
+	}
+	tail := out[idx:]
+	if strings.Contains(tail[:strings.Index(tail, "Refresh")], "-----") {
+		t.Errorf("blocker (empty body) should not emit body separator:\n%s", tail)
+	}
+}
+
 func TestE2E_Summary_Swiftbar(t *testing.T) {
 	setupHome(t)
 	r := runCLI(t, "summary", "--swiftbar")

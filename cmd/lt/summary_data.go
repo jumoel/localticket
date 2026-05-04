@@ -9,11 +9,14 @@ type projectStats struct {
 }
 
 type topTicket struct {
-	Project   string `json:"project"`
-	ID        int64  `json:"id"`
-	Title     string `json:"title"`
-	Status    string `json:"status"`
-	UpdatedAt string `json:"updated_at"`
+	Project   string   `json:"project"`
+	ID        int64    `json:"id"`
+	Title     string   `json:"title"`
+	Body      string   `json:"body"`
+	Status    string   `json:"status"`
+	Labels    []string `json:"labels"`
+	Links     []link   `json:"links"`
+	UpdatedAt string   `json:"updated_at"`
 }
 
 type summary struct {
@@ -67,8 +70,13 @@ func (s *store) summarize() (*summary, error) {
 	}
 	out.Totals.Projects = len(out.Projects)
 
+	type topRow struct {
+		topTicket
+		internalID int64
+		projectID  int64
+	}
 	tops, err := s.db.Query(`
-		SELECT p.name, t.num, t.title, t.status, t.updated_at
+		SELECT p.id, p.name, t.id, t.num, t.title, t.body, t.status, t.updated_at
 		FROM tickets t
 		JOIN projects p ON p.id = t.project_id
 		WHERE t.status != 'closed'
@@ -78,12 +86,31 @@ func (s *store) summarize() (*summary, error) {
 		return nil, internalErr(err)
 	}
 	defer tops.Close()
+	var rowList []topRow
 	for tops.Next() {
-		var tt topTicket
-		if err := tops.Scan(&tt.Project, &tt.ID, &tt.Title, &tt.Status, &tt.UpdatedAt); err != nil {
+		var r topRow
+		r.Labels = []string{}
+		r.Links = []link{}
+		if err := tops.Scan(&r.projectID, &r.Project, &r.internalID, &r.ID, &r.Title, &r.Body, &r.Status, &r.UpdatedAt); err != nil {
 			return nil, internalErr(err)
 		}
-		out.Top = append(out.Top, tt)
+		rowList = append(rowList, r)
 	}
-	return out, tops.Err()
+	if err := tops.Err(); err != nil {
+		return nil, internalErr(err)
+	}
+
+	for i := range rowList {
+		t := &ticket{internalID: rowList[i].internalID}
+		if err := s.loadLabels(t); err != nil {
+			return nil, err
+		}
+		if err := s.loadLinks(t, rowList[i].projectID); err != nil {
+			return nil, err
+		}
+		rowList[i].Labels = t.Labels
+		rowList[i].Links = t.Links
+		out.Top = append(out.Top, rowList[i].topTicket)
+	}
+	return out, nil
 }

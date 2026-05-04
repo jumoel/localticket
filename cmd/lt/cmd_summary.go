@@ -104,7 +104,7 @@ func renderSwiftbar(w io.Writer, sum *summary) error {
 		fmt.Fprintln(w, "---")
 		fmt.Fprintln(w, "Recent | color=gray")
 		for _, t := range sum.Top {
-			fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, swiftbarSafe(truncateRunes(t.Title, 60)))
+			renderSwiftbarTicket(w, t)
 		}
 	}
 
@@ -119,4 +119,43 @@ func renderSwiftbar(w io.Writer, sum *summary) error {
 func swiftbarSafe(s string) string {
 	r := strings.NewReplacer("|", "¦", "\r", " ", "\n", " ")
 	return r.Replace(s)
+}
+
+const swiftbarBodyLineLimit = 25
+
+// renderSwiftbarTicket emits one Recent row plus a submenu (lines prefixed
+// with `--`) showing status, labels, links, and the body. Body lines beyond
+// swiftbarBodyLineLimit are dropped with a trailing "(... N more lines)".
+func renderSwiftbarTicket(w io.Writer, t topTicket) {
+	fmt.Fprintf(w, "%s#%d  %s | font=Menlo\n", t.Project, t.ID, swiftbarSafe(truncateRunes(t.Title, 60)))
+	fmt.Fprintf(w, "--Status: %s | color=gray\n", t.Status)
+	if len(t.Labels) > 0 {
+		fmt.Fprintf(w, "--Labels: %s | color=gray\n", swiftbarSafe(strings.Join(t.Labels, ", ")))
+	}
+	if len(t.Links) > 0 {
+		parts := make([]string, len(t.Links))
+		for i, l := range t.Links {
+			parts[i] = fmt.Sprintf("%s #%d", l.Type, l.Target)
+		}
+		fmt.Fprintf(w, "--Links: %s | color=gray\n", swiftbarSafe(strings.Join(parts, ", ")))
+	}
+	fmt.Fprintf(w, "--Updated: %s | color=gray\n", t.UpdatedAt)
+	body := strings.TrimRight(t.Body, "\n")
+	if body == "" {
+		return
+	}
+	fmt.Fprintln(w, "-----")
+	lines := strings.Split(body, "\n")
+	shown := lines
+	hidden := 0
+	if len(shown) > swiftbarBodyLineLimit {
+		hidden = len(shown) - swiftbarBodyLineLimit
+		shown = shown[:swiftbarBodyLineLimit]
+	}
+	for _, line := range shown {
+		fmt.Fprintf(w, "--%s | font=Menlo\n", swiftbarSafe(line))
+	}
+	if hidden > 0 {
+		fmt.Fprintf(w, "--(... %d more lines) | color=gray\n", hidden)
+	}
 }
