@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
+
+	"modernc.org/sqlite"
 )
 
 type projectRow struct {
@@ -96,6 +97,17 @@ func (s *store) deleteProject(name string, force bool) error {
 	return nil
 }
 
+// SQLite extended error code for UNIQUE constraint violations. See
+// https://sqlite.org/rescode.html#constraint_unique - documented as stable.
+const sqliteConstraintUnique = 2067
+
 func isUniqueViolation(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+	if err == nil {
+		return false
+	}
+	var sqliteErr *sqlite.Error
+	if errors.As(err, &sqliteErr) {
+		return sqliteErr.Code() == sqliteConstraintUnique
+	}
+	return false
 }

@@ -57,11 +57,11 @@ func internalErr(err error) error {
 }
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(run(os.Args[1:], os.Stdin, stdinIsTTY(), os.Stdout, os.Stderr))
 }
 
-func run(args []string, stdout, stderr io.Writer) int {
-	mode := outputMode("")
+func run(args []string, stdin io.Reader, stdinTTY bool, stdout, stderr io.Writer) int {
+	mode := modeAuto
 	rest := make([]string, 0, len(args))
 	for _, a := range args {
 		switch a {
@@ -79,16 +79,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 			rest = append(rest, a)
 		}
 	}
-	if len(rest) == 0 {
-		fmt.Fprint(stderr, usageText)
-		return 1
-	}
 	if mode == modeAuto {
 		mode = detectMode(stdout)
 	}
+	if len(rest) == 0 {
+		if mode == modeJSON {
+			writeError(stderr, mode, "usage", "no command given (try `lt --help`)")
+		} else {
+			fmt.Fprint(stderr, usageText)
+		}
+		return 1
+	}
 
 	cmd, sub := rest[0], rest[1:]
-	err := dispatch(cmd, sub, stdout, stderr, mode)
+	err := dispatch(cmd, sub, stdin, stdinTTY, stdout, stderr, mode)
 	if err == nil {
 		return 0
 	}
@@ -101,18 +105,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 4
 }
 
-func dispatch(cmd string, args []string, stdout, stderr io.Writer, mode outMode) error {
+func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout, stderr io.Writer, mode outMode) error {
 	switch cmd {
 	case "project":
 		return runProjectImpl(args, stdout, stderr, mode)
 	case "new":
-		return runNewImpl(args, stdout, mode)
+		return runNewImpl(args, stdin, stdinTTY, stdout, mode)
 	case "list":
 		return runListImpl(args, stdout, mode)
 	case "show":
 		return runShowImpl(args, stdout, mode)
 	case "edit":
-		return runEditImpl(args, stdout, mode)
+		return runEditImpl(args, stdin, stdinTTY, stdout, mode)
 	case "status":
 		return runStatusImpl(args, stdout, mode)
 	case "close":

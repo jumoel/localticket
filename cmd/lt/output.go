@@ -15,17 +15,6 @@ const (
 	modePretty
 )
 
-func outputMode(s string) outMode {
-	switch s {
-	case "json":
-		return modeJSON
-	case "pretty":
-		return modePretty
-	default:
-		return modeAuto
-	}
-}
-
 func detectMode(w io.Writer) outMode {
 	f, ok := w.(*os.File)
 	if !ok {

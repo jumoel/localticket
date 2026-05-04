@@ -2,8 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"strings"
+	"errors"
+
+	"modernc.org/sqlite"
 )
+
+const sqliteError = 1
 
 func (s *store) searchTickets(projectName, query string) ([]*ticket, error) {
 	p, err := s.getProject(projectName)
@@ -49,14 +53,17 @@ func (s *store) searchTickets(projectName, query string) ([]*ticket, error) {
 	return out, nil
 }
 
+// wrapFTSError classifies query errors. SQLite returns SQLITE_ERROR (code 1)
+// for FTS5 syntax problems and for other SQL parse errors triggered by the
+// MATCH expression. Both originate in user-supplied input here, so anything
+// at code 1 is a bad query; other codes are internal failures.
 func wrapFTSError(err error) error {
 	if err == nil {
 		return nil
 	}
-	msg := err.Error()
-	low := strings.ToLower(msg)
-	if strings.Contains(low, "fts") || strings.Contains(msg, "MATCH") || strings.Contains(low, "match") {
-		return userErr("bad_query", msg)
+	var sqliteErr *sqlite.Error
+	if errors.As(err, &sqliteErr) && sqliteErr.Code() == sqliteError {
+		return userErr("bad_query", err.Error())
 	}
 	return internalErr(err)
 }

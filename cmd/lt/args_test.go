@@ -42,6 +42,16 @@ func TestReorderArgs(t *testing.T) {
 			[]string{"name", "--force"},
 			[]string{"--force", "name"},
 		},
+		{
+			"triple-dash treated as positional",
+			[]string{"---body", "stuff"},
+			[]string{"---body", "stuff"},
+		},
+		{
+			"numeric-leading-dash is positional",
+			[]string{"--body", "x", "-5"},
+			[]string{"--body", "x", "-5"},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

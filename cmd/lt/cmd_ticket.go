@@ -4,13 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 )
 
-func runNewImpl(args []string, stdout io.Writer, mode outMode) error {
+func runNewImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("new", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	project := projectFlag(fs)
@@ -46,7 +45,7 @@ func runNewImpl(args []string, stdout io.Writer, mode outMode) error {
 		parsedLinks = append(parsedLinks, pl)
 	}
 
-	bodyText, aborted, err := body.resolve(os.Stdin, stdinIsTTY(), editorForNew, "")
+	bodyText, aborted, err := body.resolve(stdin, stdinTTY, editorForNew, "")
 	if err != nil {
 		return err
 	}

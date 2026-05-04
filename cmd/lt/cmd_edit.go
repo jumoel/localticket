@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"io"
-	"os"
 	"strings"
 )
 
-func runEditImpl(args []string, stdout io.Writer, mode outMode) error {
+func runEditImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("edit", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	project := projectFlag(fs)
@@ -59,13 +58,13 @@ func runEditImpl(args []string, stdout io.Writer, mode outMode) error {
 	var newBody *string
 	bodyFlagPresent := body.bodySet || body.bodyFile != ""
 	if bodyFlagPresent {
-		text, _, err := body.resolve(os.Stdin, stdinIsTTY(), editorForEdit, current.Body)
+		text, _, err := body.resolve(stdin, stdinTTY, editorForEdit, current.Body)
 		if err != nil {
 			return err
 		}
 		newBody = &text
 	} else if !titleSet {
-		text, _, err := body.resolve(os.Stdin, stdinIsTTY(), editorForEdit, current.Body)
+		text, _, err := body.resolve(stdin, stdinTTY, editorForEdit, current.Body)
 		if err != nil {
 			return err
 		}

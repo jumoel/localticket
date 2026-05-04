@@ -27,8 +27,7 @@ func reorderArgs(fs *flag.FlagSet, args []string) []string {
 			positionals = append(positionals, args[i+1:]...)
 			break
 		}
-		if len(a) > 1 && a[0] == '-' && a != "-" {
-			name := strings.TrimLeft(a, "-")
+		if name, ok := flagName(a); ok {
 			hasValue := false
 			if eq := strings.Index(name, "="); eq >= 0 {
 				name = name[:eq]
@@ -62,4 +61,26 @@ func reorderArgs(fs *flag.FlagSet, args []string) []string {
 
 func parseArgs(fs *flag.FlagSet, args []string) error {
 	return fs.Parse(reorderArgs(fs, args))
+}
+
+// flagName returns the bare flag name from a token like "--foo", "-p", or
+// "--foo=bar", and reports whether the token looks like a flag at all. Tokens
+// that are bare "-", "--", or numeric-looking ("-5", "-1.2") are NOT flags.
+// Exactly one or two leading dashes are stripped; "---foo" is treated as a
+// positional, since neither the flag package nor users mean anything by it.
+func flagName(a string) (string, bool) {
+	if len(a) < 2 || a[0] != '-' || a == "--" {
+		return "", false
+	}
+	rest := a[1:]
+	if rest[0] == '-' {
+		if len(rest) < 2 || rest[1] == '-' {
+			return "", false
+		}
+		return rest[1:], true
+	}
+	if rest[0] >= '0' && rest[0] <= '9' {
+		return "", false
+	}
+	return rest, true
 }

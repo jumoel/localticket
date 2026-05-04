@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 )
@@ -15,8 +16,13 @@ type cliResult struct {
 
 func runCLI(t *testing.T, args ...string) cliResult {
 	t.Helper()
+	return runCLIWithStdin(t, strings.NewReader(""), args...)
+}
+
+func runCLIWithStdin(t *testing.T, stdin io.Reader, args ...string) cliResult {
+	t.Helper()
 	var out, errBuf bytes.Buffer
-	exit := run(args, &out, &errBuf)
+	exit := run(args, stdin, false, &out, &errBuf)
 	return cliResult{exit: exit, stdout: out.String(), stderr: errBuf.String()}
 }
 
