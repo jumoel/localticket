@@ -82,7 +82,24 @@ For the body, `lt new` checks `--body-file`, then `--body -` (stdin), then `--bo
 
 `lt list` defaults to open and in-progress. Pass `--status closed` or `--status all` to include closed.
 
-`lt search` is an FTS5 query against title and body. `OR`, `"phrases"`, `prefix*`, and `NEAR(a b, 5)` all work.
+`lt search` runs an FTS5 query against title and body:
+
+| Form              | Meaning                                                     |
+|-------------------|-------------------------------------------------------------|
+| `word1 word2`     | both terms must appear (AND)                                |
+| `word1 OR word2`  | either term                                                 |
+| `"word1 word2"`   | exact phrase                                                |
+| `prefix*`         | prefix match                                                |
+| `word1 NOT word2` | exclude word2                                               |
+| `title:term`      | match only the title column                                 |
+| `body:term`       | match only the body column                                  |
+| `NEAR(w1 w2, n)`  | w1 and w2 within n tokens of each other, in the same column |
+
+```sh
+lt search -p api 'rate*'                       # rate, rate-limiter, rates, ...
+lt search -p api 'title:auth'                  # only when "auth" is in the title
+lt search -p api '"token bucket" OR refactor'  # phrase OR keyword
+```
 
 `lt watch` polls the DB every `--interval` (default 2s, min 500ms) and emits an event for each change since the last tick. It watches all projects unless you pass `-p`. Output is JSONL when piped, otherwise a `time  project#id  action  details` table.
 

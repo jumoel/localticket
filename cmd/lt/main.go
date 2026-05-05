@@ -50,6 +50,16 @@ Body sources for new and edit, in priority order:
   (no flag, piped)    read body from stdin
   (no flag, TTY)      open $VISUAL/$EDITOR/vi on a temp file
 
+Search query syntax (lt search):
+  word1 word2         both terms must appear (AND)
+  word1 OR word2      either term
+  "word1 word2"       exact phrase
+  prefix*             prefix match
+  word1 NOT word2     exclude word2
+  title:term          match only the title column
+  body:term           match only the body column
+  NEAR(w1 w2, n)      w1 and w2 within n tokens (same column)
+
 Output mode is JSON when stdout is not a TTY, pretty otherwise.
 Storage lives at ~/.localticket/db.sqlite.
 `
