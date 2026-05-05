@@ -39,7 +39,13 @@ const (
 
 // resolve returns body, abortRequested, error. abortRequested is true when the
 // editor came back with no usable content for a `new` (empty buffer = user aborted).
-func (b *bodyFlags) resolve(stdin io.Reader, stdinTTY bool, mode editorMode, initial string) (string, bool, error) {
+//
+// `fallback` is used in two places: as the editor's pre-populated buffer in
+// TTY mode, and as the body itself when the caller is non-TTY with no other
+// body source. A non-empty fallback suppresses the implicit greedy read of
+// stdin so callers (templates, lt edit's existing-body case) can supply
+// content without forcing the user to also redirect stdin.
+func (b *bodyFlags) resolve(stdin io.Reader, stdinTTY bool, mode editorMode, fallback string) (string, bool, error) {
 	if b.bodyFile != "" {
 		raw, err := os.ReadFile(b.bodyFile)
 		if err != nil {
@@ -58,13 +64,20 @@ func (b *bodyFlags) resolve(stdin io.Reader, stdinTTY bool, mode editorMode, ini
 		return b.body, false, nil
 	}
 	if !stdinTTY {
+		// For `new`, a non-empty fallback (e.g. a template) wins over the
+		// implicit greedy read of stdin so callers can supply content without
+		// the user having to also redirect stdin. `edit` keeps its old
+		// stdin-read behavior even when given a fallback (the existing body).
+		if fallback != "" && mode == editorForNew {
+			return fallback, false, nil
+		}
 		raw, err := io.ReadAll(stdin)
 		if err != nil {
 			return "", false, userErr("stdin", fmt.Sprintf("read stdin: %v", err))
 		}
 		return string(raw), false, nil
 	}
-	out, err := launchEditor(initial)
+	out, err := launchEditor(fallback)
 	if err != nil {
 		return "", false, err
 	}

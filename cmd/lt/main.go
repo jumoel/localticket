@@ -21,7 +21,7 @@ Commands:
   project list
   project delete <name> [--force]
 
-  new    -p <project> <title> [--body TEXT|--body-file PATH|--body -] [--label L]... [--link TYPE:ID]...
+  new    -p <project> <title> [--template NAME] [--body TEXT|--body-file PATH|--body -] [--label L]... [--link TYPE:ID]...
   list   -p <project> [--status open|in-progress|closed|all] [--label L]... [--columns ...]
   show   -p <project> <id>
   edit   -p <project> <id> [--title T] [--body TEXT|--body-file PATH|--body -]
@@ -36,6 +36,8 @@ Commands:
   summary [--swiftbar]      (--swiftbar overrides --json/--pretty)
 
   watch  [-p <project>] [--since RFC3339] [--interval 2s]
+
+  template list             list available templates (~/.localticket/templates/)
 
 Global flags:
   --json     Force JSON output
@@ -161,6 +163,8 @@ func dispatch(cmd string, args []string, stdin io.Reader, stdinTTY bool, stdout 
 		return runSummaryImpl(args, stdout, mode)
 	case "watch":
 		return runWatchImpl(args, stdout, mode)
+	case "template":
+		return runTemplateImpl(args, stdout, mode)
 	default:
 		return userErr("unknown_command", fmt.Sprintf("unknown command: %q (try `lt --help`)", cmd))
 	}

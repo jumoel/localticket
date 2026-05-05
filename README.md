@@ -57,7 +57,7 @@ lt project create <name>
 lt project list                         (alias: ls)
 lt project delete <name> [--force]      (alias: rm)
 
-lt new    -p <project> <title>...  [--body T|--body-file P|--body -] [--label L]... [--link TYPE:ID]...
+lt new    -p <project> <title>...  [--template NAME] [--body T|--body-file P|--body -] [--label L]... [--link TYPE:ID]...
 lt list   -p <project>             [--status open|in-progress|closed|all] [--label L]... [--columns C1,C2,...]
 lt show   -p <project> <id>
 lt edit   -p <project> <id>        [--title T] [--body T|--body-file P|--body -]
@@ -71,6 +71,8 @@ lt search -p <project> <query>... [--columns C1,C2,...]
 
 lt summary [--swiftbar]
 lt watch   [-p <project>] [--since RFC3339] [--interval 2s]
+
+lt template list
 
 lt --help        Show usage
 lt --version     Show version
@@ -106,6 +108,25 @@ lt search -p api '"token bucket" OR refactor'  # phrase OR keyword
 `lt watch` polls the DB every `--interval` (default 2s, min 500ms) and emits an event for each change since the last tick. It watches all projects unless you pass `-p`. Output is JSONL when piped, otherwise a `time  project#id  action  details` table.
 
 Link types accepted on input: `blocks`, `blocked-by`, `parent`, `child`, `duplicate-of`, `related`. The schema stores only the canonical four (`blocks`, `parent`, `duplicate-of`, `related`). Inputs of `blocked-by` and `child` are flipped to their inverse, but each ticket sees the relationship from its own side, so one sees `blocks #7` and the other sees `blocked-by #3`.
+
+## Templates
+
+`lt new --template <name>` reads from `~/.localticket/templates/<project>/<name>.md` and falls back to `~/.localticket/templates/<name>.md`. The template content becomes the body, or pre-populates the editor when you're on a TTY without `--body`. An explicit `--body`, `--body-file`, or `--body -` always wins.
+
+```sh
+mkdir -p ~/.localticket/templates
+cat > ~/.localticket/templates/phase.md <<'EOF'
+## Context
+
+## Acceptance criteria
+
+## Effort
+EOF
+
+lt new -p api "Phase 1" --template phase
+```
+
+`lt template list` shows what's available.
 
 ## Output
 

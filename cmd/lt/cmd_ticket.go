@@ -15,6 +15,7 @@ func runNewImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer,
 	project := projectFlag(fs)
 	body := &bodyFlags{}
 	body.bind(fs)
+	templateName := fs.String("template", "", "template name (looks up ~/.localticket/templates/<project>/<name>.md, then ~/.localticket/templates/<name>.md)")
 	var labels labelList
 	var links linkList
 	fs.Var(&labels, "label", "label to apply (repeatable)")
@@ -27,7 +28,7 @@ func runNewImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer,
 		return err
 	}
 	if fs.NArg() < 1 {
-		return userErr("usage", "usage: lt new -p <project> <title> [--label L]... [--link TYPE:ID]...")
+		return userErr("usage", "usage: lt new -p <project> <title> [--template NAME] [--label L]... [--link TYPE:ID]...")
 	}
 	title := strings.Join(fs.Args(), " ")
 
@@ -45,7 +46,16 @@ func runNewImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer,
 		parsedLinks = append(parsedLinks, pl)
 	}
 
-	bodyText, aborted, err := body.resolve(stdin, stdinTTY, editorForNew, "")
+	var templateBody string
+	if *templateName != "" {
+		content, err := resolveTemplate(*project, *templateName)
+		if err != nil {
+			return err
+		}
+		templateBody = content
+	}
+
+	bodyText, aborted, err := body.resolve(stdin, stdinTTY, editorForNew, templateBody)
 	if err != nil {
 		return err
 	}
