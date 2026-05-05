@@ -116,6 +116,7 @@ func runShowImpl(args []string, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("show", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	project := projectFlag(fs)
+	section := fs.String("section", "", "print just one section of the body by heading text")
 	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
@@ -123,7 +124,7 @@ func runShowImpl(args []string, stdout io.Writer, mode outMode) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return userErr("usage", "usage: lt show -p <project> <id>")
+		return userErr("usage", "usage: lt show -p <project> <id> [--section H]")
 	}
 	id, err := parseTicketID(fs.Arg(0))
 	if err != nil {
@@ -137,6 +138,24 @@ func runShowImpl(args []string, stdout io.Writer, mode outMode) error {
 	t, err := s.getTicket(*project, id)
 	if err != nil {
 		return err
+	}
+	if *section != "" {
+		match, err := findSection(t.Body, *section)
+		if err != nil {
+			return err
+		}
+		body := sectionContent(t.Body, match)
+		if mode == modeJSON {
+			return writeJSON(stdout, map[string]any{
+				"section": match.heading.title,
+				"content": body,
+			})
+		}
+		fmt.Fprint(stdout, body)
+		if !strings.HasSuffix(body, "\n") {
+			fmt.Fprintln(stdout)
+		}
+		return nil
 	}
 	return renderTicket(stdout, mode, t, "")
 }

@@ -23,8 +23,9 @@ Commands:
 
   new    -p <project> <title> [--template NAME] [--body TEXT|--body-file PATH|--body -] [--label L]... [--link TYPE:ID]...
   list   -p <project> [--status open|in-progress|closed|all] [--label L]... [--columns ...]
-  show   -p <project> <id>
+  show   -p <project> <id> [--section H]
   edit   -p <project> <id> [--title T] [--body TEXT|--body-file PATH|--body -]
+                            [--section H --content TEXT|--content-file PATH|--content -]
   status -p <project> <id>... open|in-progress|closed
   close  -p <project> <id>...
   reopen -p <project> <id>...

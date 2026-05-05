@@ -15,10 +15,14 @@ func runEditImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer
 	fs.StringVar(&title, "title", "", "new title")
 	body := &bodyFlags{}
 	body.bind(fs)
+	content := &bodyFlags{}
+	content.bindAs(fs, "content")
+	section := fs.String("section", "", "limit edit to a single section by heading text (e.g. 'Effort' or '## Effort')")
 	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
 	body.markSeen(fs)
+	content.markSeen(fs)
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "title" {
 			titleSet = true
@@ -28,11 +32,20 @@ func runEditImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer
 		return err
 	}
 	if fs.NArg() != 1 {
-		return userErr("usage", "usage: lt edit -p <project> <id> [--title T] [--body ...|--body-file ...|--body -]")
+		return userErr("usage", "usage: lt edit -p <project> <id> [--title T] [--body ...] [--section H --content ...]")
 	}
 	id, err := parseTicketID(fs.Arg(0))
 	if err != nil {
 		return err
+	}
+
+	bodyFlagPresent := body.bodySet || body.bodyFile != ""
+	contentFlagPresent := content.bodySet || content.bodyFile != ""
+	if *section != "" && bodyFlagPresent {
+		return userErr("conflicting_flags", "--section cannot be combined with --body or --body-file")
+	}
+	if contentFlagPresent && *section == "" {
+		return userErr("conflicting_flags", "--content requires --section")
 	}
 
 	s, err := openDefaultStore()
@@ -56,8 +69,18 @@ func runEditImpl(args []string, stdin io.Reader, stdinTTY bool, stdout io.Writer
 	}
 
 	var newBody *string
-	bodyFlagPresent := body.bodySet || body.bodyFile != ""
-	if bodyFlagPresent {
+	if *section != "" {
+		match, err := findSection(current.Body, *section)
+		if err != nil {
+			return err
+		}
+		newSection, _, err := content.resolve(stdin, stdinTTY, editorForNew, sectionContent(current.Body, match))
+		if err != nil {
+			return err
+		}
+		updated := replaceSection(current.Body, match, newSection)
+		newBody = &updated
+	} else if bodyFlagPresent {
 		text, _, err := body.resolve(stdin, stdinTTY, editorForEdit, current.Body)
 		if err != nil {
 			return err

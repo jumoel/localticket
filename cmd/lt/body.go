@@ -13,18 +13,31 @@ type bodyFlags struct {
 	body     string
 	bodyFile string
 	bodySet  bool
+	flagName string // tracks which flag base ("body", "content", ...) was used
 }
 
-func (b *bodyFlags) bind(fs *flag.FlagSet) {
-	fs.StringVar(&b.body, "body", "", "ticket body (literal text; pass - to read from stdin)")
-	fs.StringVar(&b.bodyFile, "body-file", "", "ticket body from file path")
+func (b *bodyFlags) bind(fs *flag.FlagSet) { b.bindAs(fs, "body") }
+
+// bindAs registers the flags under a chosen base name, e.g. "body" or
+// "content". The resolve / markSeen helpers track which flag was actually
+// passed via a stored name so the same struct can power lt new --body and
+// lt edit --section --content.
+func (b *bodyFlags) bindAs(fs *flag.FlagSet, base string) {
+	b.flagName = base
+	fs.StringVar(&b.body, base, "", base+" (literal text; pass - to read from stdin)")
+	fs.StringVar(&b.bodyFile, base+"-file", "", base+" from file path")
 }
 
-// markSeen records whether --body was explicitly passed, so we can distinguish
-// `--body ""` (force empty body) from no flag at all (fall through to stdin/editor).
+// markSeen records whether the literal flag was explicitly passed so we can
+// distinguish e.g. `--body ""` (force empty) from no flag at all (fall through
+// to stdin/editor).
 func (b *bodyFlags) markSeen(fs *flag.FlagSet) {
+	target := b.flagName
+	if target == "" {
+		target = "body"
+	}
 	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "body" {
+		if f.Name == target {
 			b.bodySet = true
 		}
 	})

@@ -59,8 +59,9 @@ lt project delete <name> [--force]      (alias: rm)
 
 lt new    -p <project> <title>...  [--template NAME] [--body T|--body-file P|--body -] [--label L]... [--link TYPE:ID]...
 lt list   -p <project>             [--status open|in-progress|closed|all] [--label L]... [--columns C1,C2,...]
-lt show   -p <project> <id>
+lt show   -p <project> <id>        [--section H]
 lt edit   -p <project> <id>        [--title T] [--body T|--body-file P|--body -]
+                                   [--section H --content T|--content-file P|--content -]
 lt status -p <project> <id>... open|in-progress|closed
 lt close  -p <project> <id>...
 lt reopen -p <project> <id>...
@@ -85,6 +86,8 @@ For the body, `lt new` checks `--body-file`, then `--body -` (stdin), then `--bo
 `lt list` defaults to open and in-progress. Pass `--status closed` or `--status all` to include closed.
 
 `--columns` picks which TTY columns to show. Available: `id`, `title`, `status`, `labels`, `links`, `updated_at`, `created_at`, `closed_at`. Default is `id,status,title,labels,updated_at`. Time columns render as relative ("2h ago"). `--columns` works on `lt search` too. JSON output is unaffected.
+
+`--section` on `lt show` and `lt edit` matches a markdown ATX heading by text (case-insensitive, `#` prefix optional). Section content runs from the heading line up to the next same-or-higher heading. `lt show --section` prints just that content; `lt edit --section --content ...` replaces it without touching the rest of the body. Mismatched section name returns `section_not_found` (exit 2); two matches return `section_ambiguous` (exit 1).
 
 `lt close`, `lt reopen`, and `lt status` accept multiple ids. A single id keeps the existing return shape (one ticket); two or more wrap the result as `{"tickets": [...], "errors": [...]}`. A failed id doesn't stop the rest from being processed; the exit code is the first failure's code.
 
