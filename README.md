@@ -227,6 +227,15 @@ Output is JSON when stdout isn't a TTY, so `jq` works directly. The `id` field i
 Exit codes: 0 ok, 1 user error, 2 not found, 3 conflict, 4 internal. Branch on these, don't parse error prose.
 
 If a project doesn't exist, any command returns exit code 2 with `code: "not_found"`. Create it explicitly: `lt project create <name>`. Auto-create is off so a typo doesn't spawn a project.
+
+Useful patterns:
+
+- Pipe a body in: `echo "..." | lt new -p P "title" --body -`. Same trick works for `--content` on section edits.
+- Edit one section without rewriting the body: `lt edit -p P 3 --section Effort --content "1 week"`.
+- Operate on many tickets at once: `lt close 1 3 5 7`, `lt label add -p P --id 1 --id 2 needs-review`.
+- Templates: drop markdown into `~/.localticket/templates/<name>.md`, then `lt new ... --template <name>`. `lt template list` shows what's there.
+- Search is FTS5: `prefix*`, `OR`, `"phrases"`, `title:foo`, `NEAR(a b, 5)`.
+- Walk relationships: `lt link list -p P` (or `-p P <id>` for one ticket).
 ```
 
 ## Menu bar (SwiftBar)

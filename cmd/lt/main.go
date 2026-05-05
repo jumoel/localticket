@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-var version = "1.0.0-dev"
+var version = "1.0.0"
 
 const usageText = `lt - local ticket store
 
