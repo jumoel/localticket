@@ -43,6 +43,13 @@ Global flags:
   --help     Show this help
   --version  Show version
 
+Body sources for new and edit, in priority order:
+  --body-file PATH    read body from file
+  --body -            read body from stdin
+  --body TEXT         use TEXT as the body
+  (no flag, piped)    read body from stdin
+  (no flag, TTY)      open $VISUAL/$EDITOR/vi on a temp file
+
 Output mode is JSON when stdout is not a TTY, pretty otherwise.
 Storage lives at ~/.localticket/db.sqlite.
 `

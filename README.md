@@ -44,6 +44,12 @@ lt close -p scratch 1
 
 Each command prints JSON when piped and a table on a TTY. Override with `--json` or `--pretty`.
 
+Pipe a body in from anywhere:
+
+```sh
+echo "Token bucket leaks under contention" | lt new -p scratch "Refactor the rate limiter" --body -
+```
+
 ## Commands
 
 ```
