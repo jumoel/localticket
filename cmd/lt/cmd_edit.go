@@ -97,14 +97,16 @@ func runStatusImpl(args []string, stdout io.Writer, mode outMode) error {
 	if err := requireProject(*project); err != nil {
 		return err
 	}
-	if fs.NArg() != 2 {
-		return userErr("usage", "usage: lt status -p <project> <id> open|in-progress|closed")
+	if fs.NArg() < 2 {
+		return userErr("usage", "usage: lt status -p <project> <id>... open|in-progress|closed")
 	}
-	id, err := parseTicketID(fs.Arg(0))
+	newStatus := fs.Arg(fs.NArg() - 1)
+	idArgs := fs.Args()[:fs.NArg()-1]
+	ids, err := parsePositionalIDs(idArgs)
 	if err != nil {
 		return err
 	}
-	return applyStatus(*project, id, fs.Arg(1), stdout, mode)
+	return applyStatus(*project, ids, newStatus, stdout, mode)
 }
 
 func runCloseImpl(args []string, stdout io.Writer, mode outMode) error {
@@ -117,14 +119,14 @@ func runCloseImpl(args []string, stdout io.Writer, mode outMode) error {
 	if err := requireProject(*project); err != nil {
 		return err
 	}
-	if fs.NArg() != 1 {
-		return userErr("usage", "usage: lt close -p <project> <id>")
+	if fs.NArg() < 1 {
+		return userErr("usage", "usage: lt close -p <project> <id>...")
 	}
-	id, err := parseTicketID(fs.Arg(0))
+	ids, err := parsePositionalIDs(fs.Args())
 	if err != nil {
 		return err
 	}
-	return applyStatus(*project, id, "closed", stdout, mode)
+	return applyStatus(*project, ids, "closed", stdout, mode)
 }
 
 func runReopenImpl(args []string, stdout io.Writer, mode outMode) error {
@@ -137,28 +139,50 @@ func runReopenImpl(args []string, stdout io.Writer, mode outMode) error {
 	if err := requireProject(*project); err != nil {
 		return err
 	}
-	if fs.NArg() != 1 {
-		return userErr("usage", "usage: lt reopen -p <project> <id>")
+	if fs.NArg() < 1 {
+		return userErr("usage", "usage: lt reopen -p <project> <id>...")
 	}
-	id, err := parseTicketID(fs.Arg(0))
+	ids, err := parsePositionalIDs(fs.Args())
 	if err != nil {
 		return err
 	}
-	return applyStatus(*project, id, "open", stdout, mode)
+	return applyStatus(*project, ids, "open", stdout, mode)
 }
 
-func applyStatus(project string, id int64, newStatus string, stdout io.Writer, mode outMode) error {
-	s, err := openDefaultStore()
-	if err != nil {
-		return err
+func parsePositionalIDs(args []string) ([]int64, error) {
+	if len(args) == 0 {
+		return nil, userErr("usage", "no ticket ids given")
 	}
-	defer s.Close()
-	if _, err := s.setTicketStatus(project, id, newStatus); err != nil {
-		return err
+	out := make([]int64, 0, len(args))
+	for _, a := range args {
+		id, err := parseTicketID(a)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, id)
 	}
-	t, err := s.getTicket(project, id)
-	if err != nil {
-		return err
+	return out, nil
+}
+
+func applyStatus(project string, ids []int64, newStatus string, stdout io.Writer, mode outMode) error {
+	verb := statusVerb(newStatus)
+	op := func(s *store, id int64) (*ticket, error) {
+		if _, err := s.setTicketStatus(project, id, newStatus); err != nil {
+			return nil, err
+		}
+		return s.getTicket(project, id)
 	}
-	return renderTicket(stdout, mode, t, "")
+	return applyBulk(ids, verb, op, stdout, mode)
+}
+
+func statusVerb(s string) string {
+	switch s {
+	case "closed":
+		return "Closed"
+	case "open":
+		return "Reopened"
+	case "in-progress":
+		return "In progress"
+	}
+	return "Status set"
 }

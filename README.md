@@ -61,10 +61,10 @@ lt new    -p <project> <title>...  [--template NAME] [--body T|--body-file P|--b
 lt list   -p <project>             [--status open|in-progress|closed|all] [--label L]... [--columns C1,C2,...]
 lt show   -p <project> <id>
 lt edit   -p <project> <id>        [--title T] [--body T|--body-file P|--body -]
-lt status -p <project> <id> open|in-progress|closed
-lt close  -p <project> <id>
-lt reopen -p <project> <id>
-lt label  add|rm -p <project> <id> <label>...
+lt status -p <project> <id>... open|in-progress|closed
+lt close  -p <project> <id>...
+lt reopen -p <project> <id>...
+lt label  add|rm -p <project> [--id <id>... | <id>] <label>...
 lt link   add    -p <project> <id> <type> <other-id>
 lt link   rm     -p <project> <id> <other-id>
 lt search -p <project> <query>... [--columns C1,C2,...]
@@ -85,6 +85,10 @@ For the body, `lt new` checks `--body-file`, then `--body -` (stdin), then `--bo
 `lt list` defaults to open and in-progress. Pass `--status closed` or `--status all` to include closed.
 
 `--columns` picks which TTY columns to show. Available: `id`, `title`, `status`, `labels`, `links`, `updated_at`, `created_at`, `closed_at`. Default is `id,status,title,labels,updated_at`. Time columns render as relative ("2h ago"). `--columns` works on `lt search` too. JSON output is unaffected.
+
+`lt close`, `lt reopen`, and `lt status` accept multiple ids. A single id keeps the existing return shape (one ticket); two or more wrap the result as `{"tickets": [...], "errors": [...]}`. A failed id doesn't stop the rest from being processed; the exit code is the first failure's code.
+
+`lt label add|rm` supports the same multi-target behavior via repeatable `--id <id>` flags. The legacy single-id positional form still works.
 
 `lt search` runs an FTS5 query against title and body:
 

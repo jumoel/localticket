@@ -25,10 +25,10 @@ Commands:
   list   -p <project> [--status open|in-progress|closed|all] [--label L]... [--columns ...]
   show   -p <project> <id>
   edit   -p <project> <id> [--title T] [--body TEXT|--body-file PATH|--body -]
-  status -p <project> <id> open|in-progress|closed
-  close  -p <project> <id>
-  reopen -p <project> <id>
-  label  add|rm -p <project> <id> <label>
+  status -p <project> <id>... open|in-progress|closed
+  close  -p <project> <id>...
+  reopen -p <project> <id>...
+  label  add|rm -p <project> [--id <id>...|<id>] <label>...
   link   add    -p <project> <id> <type> <other-id>
   link   rm     -p <project> <id> <other-id>
   search -p <project> <query> [--columns ...]
