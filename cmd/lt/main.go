@@ -22,7 +22,7 @@ Commands:
   project delete <name> [--force]
 
   new    -p <project> <title> [--body TEXT|--body-file PATH|--body -] [--label L]... [--link TYPE:ID]...
-  list   -p <project> [--status open|in-progress|closed|all] [--label L]...
+  list   -p <project> [--status open|in-progress|closed|all] [--label L]... [--columns ...]
   show   -p <project> <id>
   edit   -p <project> <id> [--title T] [--body TEXT|--body-file PATH|--body -]
   status -p <project> <id> open|in-progress|closed
@@ -31,7 +31,7 @@ Commands:
   label  add|rm -p <project> <id> <label>
   link   add    -p <project> <id> <type> <other-id>
   link   rm     -p <project> <id> <other-id>
-  search -p <project> <query>
+  search -p <project> <query> [--columns ...]
 
   summary [--swiftbar]      (--swiftbar overrides --json/--pretty)
 
@@ -49,6 +49,11 @@ Body sources for new and edit, in priority order:
   --body TEXT         use TEXT as the body
   (no flag, piped)    read body from stdin
   (no flag, TTY)      open $VISUAL/$EDITOR/vi on a temp file
+
+TTY columns (--columns for list and search):
+  Available: id, title, status, labels, links, updated_at, created_at, closed_at
+  Default:   id,status,title,labels,updated_at
+  JSON output ignores --columns; the JSON shape is fixed.
 
 Search query syntax (lt search):
   word1 word2         both terms must appear (AND)

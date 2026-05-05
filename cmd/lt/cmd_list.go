@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 )
 
 type labelList []string
@@ -18,6 +17,7 @@ func runListImpl(args []string, stdout io.Writer, mode outMode) error {
 	fs.SetOutput(io.Discard)
 	project := projectFlag(fs)
 	status := fs.String("status", "", "filter by status: open|in-progress|closed|all")
+	columnsFlag := fs.String("columns", "", "comma-separated TTY columns (id,status,title,labels,links,updated_at,created_at,closed_at)")
 	var labels labelList
 	fs.Var(&labels, "label", "filter by label (repeatable; AND semantics)")
 	if err := parseArgs(fs, args); err != nil {
@@ -27,7 +27,11 @@ func runListImpl(args []string, stdout io.Writer, mode outMode) error {
 		return err
 	}
 	if fs.NArg() != 0 {
-		return userErr("usage", "usage: lt list -p <project> [--status ...] [--label L]...")
+		return userErr("usage", "usage: lt list -p <project> [--status ...] [--label L]... [--columns ...]")
+	}
+	columns, err := parseColumns(*columnsFlag)
+	if err != nil {
+		return err
 	}
 
 	var statuses []string
@@ -70,13 +74,7 @@ func runListImpl(args []string, stdout io.Writer, mode outMode) error {
 		fmt.Fprintln(stdout, "No tickets.")
 		return nil
 	}
-	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTATUS\tTITLE\tLABELS\tUPDATED")
-	for _, t := range tickets {
-		fmt.Fprintf(tw, "#%d\t%s\t%s\t%s\t%s\n",
-			t.ID, t.Status, truncateRunes(t.Title, 60), strings.Join(t.Labels, ","), t.UpdatedAt)
-	}
-	return tw.Flush()
+	return renderTicketTable(stdout, tickets, columns)
 }
 
 func truncateRunes(s string, n int) string {

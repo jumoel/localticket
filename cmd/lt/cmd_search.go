@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 )
 
 func runSearchImpl(args []string, stdout io.Writer, mode outMode) error {
 	fs := flag.NewFlagSet("search", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	project := projectFlag(fs)
+	columnsFlag := fs.String("columns", "", "comma-separated TTY columns (id,status,title,labels,links,updated_at,created_at,closed_at)")
 	if err := parseArgs(fs, args); err != nil {
 		return userErr("bad_flags", err.Error())
 	}
@@ -19,9 +19,13 @@ func runSearchImpl(args []string, stdout io.Writer, mode outMode) error {
 		return err
 	}
 	if fs.NArg() < 1 {
-		return userErr("usage", "usage: lt search -p <project> <query>...")
+		return userErr("usage", "usage: lt search -p <project> <query>... [--columns ...]")
 	}
 	query := strings.Join(fs.Args(), " ")
+	columns, err := parseColumns(*columnsFlag)
+	if err != nil {
+		return err
+	}
 
 	s, err := openDefaultStore()
 	if err != nil {
@@ -45,11 +49,5 @@ func runSearchImpl(args []string, stdout io.Writer, mode outMode) error {
 		fmt.Fprintln(stdout, "No matches.")
 		return nil
 	}
-	tw := tabwriter.NewWriter(stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTATUS\tTITLE\tLABELS\tUPDATED")
-	for _, t := range tickets {
-		fmt.Fprintf(tw, "#%d\t%s\t%s\t%s\t%s\n",
-			t.ID, t.Status, truncateRunes(t.Title, 60), strings.Join(t.Labels, ","), t.UpdatedAt)
-	}
-	return tw.Flush()
+	return renderTicketTable(stdout, tickets, columns)
 }
