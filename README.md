@@ -68,6 +68,7 @@ lt reopen -p <project> <id>...
 lt label  add|rm -p <project> [--id <id>... | <id>] <label>...
 lt link   add    -p <project> <id> <type> <other-id>
 lt link   rm     -p <project> <id> <other-id>
+lt link   list   -p <project> [<id>] [--type T] [--include-closed]
 lt search -p <project> <query>... [--columns C1,C2,...]
 
 lt summary [--swiftbar]
@@ -114,7 +115,21 @@ lt search -p api '"token bucket" OR refactor'  # phrase OR keyword
 
 `lt watch` polls the DB every `--interval` (default 2s, min 500ms) and emits an event for each change since the last tick. It watches all projects unless you pass `-p`. Output is JSONL when piped, otherwise a `time  project#id  action  details` table.
 
-Link types accepted on input: `blocks`, `blocked-by`, `parent`, `child`, `duplicate-of`, `related`. The schema stores only the canonical four (`blocks`, `parent`, `duplicate-of`, `related`). Inputs of `blocked-by` and `child` are flipped to their inverse, but each ticket sees the relationship from its own side, so one sees `blocks #7` and the other sees `blocked-by #3`.
+Link types accepted on input:
+
+| Canonical (stored) | Inverse alias  |
+|--------------------|----------------|
+| `blocks`           | `blocked-by`   |
+| `parent`           | `child`        |
+| `duplicate-of`     | `duplicates`   |
+| `related`          | (symmetric)    |
+| `supersedes`       | `superseded-by`|
+| `references`       | `referenced-by`|
+| `derived-from`     | `derived-to`   |
+
+Inverse aliases are flipped to canonical on insert; each ticket sees the relationship from its own side, so one shows `blocks #7` and the other shows `blocked-by #3`.
+
+`lt link list` walks the project and prints every link as `from / type / to`. Pass an `<id>` to limit to links touching that ticket. `--type` filters to a single canonical type. Closed-endpoint links are hidden by default; `--include-closed` adds them back.
 
 ## Templates
 

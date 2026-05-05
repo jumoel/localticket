@@ -16,6 +16,33 @@ import (
 var migrations = []func(*sql.Tx) error{
 	nil, // index 0, unused
 	nil, // index 1, v1 = initial schemaSQL
+	migrateV1ToV2,
+}
+
+// migrateV1ToV2 expands the ticket_links.type CHECK constraint to include
+// supersedes, references, and derived-from. SQLite has no ALTER TABLE for
+// CHECK constraints, so the table is rebuilt: rename, create, copy, drop,
+// re-index.
+func migrateV1ToV2(tx *sql.Tx) error {
+	stmts := []string{
+		`ALTER TABLE ticket_links RENAME TO ticket_links_old_v1`,
+		`CREATE TABLE ticket_links (
+			from_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+			to_id   INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+			type    TEXT NOT NULL CHECK (type IN ('blocks','parent','duplicate-of','related','supersedes','references','derived-from')),
+			UNIQUE (from_id, to_id, type),
+			CHECK (from_id != to_id)
+		)`,
+		`INSERT INTO ticket_links(from_id, to_id, type) SELECT from_id, to_id, type FROM ticket_links_old_v1`,
+		`DROP TABLE ticket_links_old_v1`,
+		`CREATE INDEX IF NOT EXISTS idx_links_to ON ticket_links(to_id)`,
+	}
+	for _, s := range stmts {
+		if _, err := tx.Exec(s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // runMigrations advances the DB from `from` to `to`, applying each step in

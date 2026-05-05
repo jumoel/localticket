@@ -173,14 +173,22 @@ func (s *store) loadLinks(t *ticket, projectID int64) error {
 }
 
 // inverseLinkType maps a stored canonical link type to the type a ticket on the
-// receiving end should display. blocks-style relationships are directional;
-// duplicate-of and related are symmetric.
+// receiving end should display. Most relationships are directional; related
+// is symmetric and renders the same on both sides.
 func inverseLinkType(canonical string) string {
 	switch canonical {
 	case "blocks":
 		return "blocked-by"
 	case "parent":
 		return "child"
+	case "duplicate-of":
+		return "duplicates"
+	case "supersedes":
+		return "superseded-by"
+	case "references":
+		return "referenced-by"
+	case "derived-from":
+		return "derived-to"
 	default:
 		return canonical
 	}

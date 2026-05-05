@@ -32,6 +32,7 @@ Commands:
   label  add|rm -p <project> [--id <id>...|<id>] <label>...
   link   add    -p <project> <id> <type> <other-id>
   link   rm     -p <project> <id> <other-id>
+  link   list   -p <project> [<id>] [--type T] [--include-closed]
   search -p <project> <query> [--columns ...]
 
   summary [--swiftbar]      (--swiftbar overrides --json/--pretty)

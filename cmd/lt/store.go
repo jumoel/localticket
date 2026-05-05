@@ -10,7 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const currentSchemaVersion = 1
+const currentSchemaVersion = 2
 
 type store struct {
 	db *sql.DB
@@ -119,7 +119,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_labels_label ON ticket_labels(label);
 CREATE TABLE IF NOT EXISTS ticket_links (
   from_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
   to_id   INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
-  type    TEXT NOT NULL CHECK (type IN ('blocks','parent','duplicate-of','related')),
+  type    TEXT NOT NULL CHECK (type IN ('blocks','parent','duplicate-of','related','supersedes','references','derived-from')),
   UNIQUE (from_id, to_id, type),
   CHECK (from_id != to_id)
 );
