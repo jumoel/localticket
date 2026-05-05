@@ -59,15 +59,24 @@ func (s *store) ensureSchema() error {
 	if _, err := s.db.Exec(schemaSQL); err != nil {
 		return fmt.Errorf("apply schema: %w", err)
 	}
-	if _, err := s.db.Exec(`INSERT OR IGNORE INTO schema_version(version) VALUES (?)`, currentSchemaVersion); err != nil {
-		return fmt.Errorf("set schema_version: %w", err)
-	}
-	var v int
+
+	var v sql.NullInt64
 	if err := s.db.QueryRow(`SELECT MAX(version) FROM schema_version`).Scan(&v); err != nil {
 		return fmt.Errorf("read schema_version: %w", err)
 	}
-	if v > currentSchemaVersion {
-		return fmt.Errorf("database schema version %d is newer than this binary supports (%d)", v, currentSchemaVersion)
+	if !v.Valid {
+		// Fresh DB: schemaSQL just created the current schema. Record it as such.
+		if _, err := s.db.Exec(`INSERT INTO schema_version(version) VALUES (?)`, currentSchemaVersion); err != nil {
+			return fmt.Errorf("set schema_version: %w", err)
+		}
+		return nil
+	}
+	recorded := int(v.Int64)
+	if recorded > currentSchemaVersion {
+		return fmt.Errorf("database schema version %d is newer than this binary supports (%d)", recorded, currentSchemaVersion)
+	}
+	if recorded < currentSchemaVersion {
+		return runMigrations(s.db, recorded, currentSchemaVersion, migrations)
 	}
 	return nil
 }
