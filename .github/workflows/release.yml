@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p staging
+          go build -trimpath -ldflags="-s -w -X main.version=${{ steps.ver.outputs.version }}" -o staging/lt${{ matrix.ext }} ./cmd/lt
+          cp LICENSE README.md staging/
+      - name: Package
+        shell: bash
+        run: |
+          name="lt-${{ steps.ver.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            (cd staging && zip -r "../${name}.zip" .)
+          else
+            tar -czf "${name}.tar.gz" -C staging .
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lt-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: lt-*
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Resolve release notes
+        shell: bash
+        run: |
+          ver="${{ steps.ver.outputs.version }}"
+          : > notes.txt
+          if [ -f RELEASE_NOTES.md ]; then
+            awk -v ver="$ver" '
+              /^## / {
+                if (capture) exit
+                if (index($0, ver)) { capture=1; next }
+              }
+              capture { print }
+            ' RELEASE_NOTES.md > notes.txt
+          fi
+          if [ ! -s notes.txt ]; then
+            prev=$(git tag --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}\$" | head -n1)
+            if [ -n "$prev" ]; then
+              git log --pretty='format:- %s' --no-merges "${prev}..${GITHUB_REF_NAME}" > notes.txt
+            else
+              git log --pretty='format:- %s' --no-merges "${GITHUB_REF_NAME}" > notes.txt
+            fi
+          fi
+          echo "Resolved release notes:"
+          cat notes.txt
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file notes.txt \
+            artifacts/lt-*
