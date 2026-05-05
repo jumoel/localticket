@@ -10,11 +10,27 @@ When a model notices something to do later, it usually drops a note in chat. Tha
 
 ## Install
 
+### Pre-built binaries
+
+Grab the archive for your platform from the [latest release](https://github.com/jumoel/localticket/releases/latest):
+
+- macOS (Apple Silicon): `lt-<version>-darwin-arm64.tar.gz`
+- macOS (Intel): `lt-<version>-darwin-amd64.tar.gz`
+- Linux (x86_64): `lt-<version>-linux-amd64.tar.gz`
+- Linux (ARM64): `lt-<version>-linux-arm64.tar.gz`
+- Windows: `lt-<version>-windows-amd64.zip`
+
+Extract and place `lt` (or `lt.exe`) on your `$PATH`.
+
+### From source
+
 ```sh
 go install github.com/jumoel/localticket/cmd/lt@latest
 ```
 
-Binary at `$GOBIN/lt` (default `$HOME/go/bin/lt`). Storage at `~/.localticket/db.sqlite`, created on first use. SQLite is `modernc.org/sqlite` - pure Go, no CGO.
+Binary at `$GOBIN/lt` (default `$HOME/go/bin/lt`).
+
+Storage lives at `~/.localticket/db.sqlite`, created on first use. SQLite is `modernc.org/sqlite` - pure Go, no CGO.
 
 ## Quick start
 
