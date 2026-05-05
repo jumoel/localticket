@@ -28,7 +28,9 @@ func runCLIWithStdin(t *testing.T, stdin io.Reader, args ...string) cliResult {
 
 func setupHome(t *testing.T) {
 	t.Helper()
-	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
 }
 
 func mustJSON(t *testing.T, s string) map[string]any {
